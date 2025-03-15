@@ -6,6 +6,9 @@ enum ButtonVariant {
   primary,
   secondary,
   tertiary,
+  primaryIconOnly,
+  secondaryIconOnly,
+  tertiaryIconOnly,
 }
 
 class AppButton extends StatefulWidget {
@@ -48,9 +51,19 @@ class _AppButtonState extends State<AppButton> {
               });
               widget.onClick(); // Call the onClick callback
             },
+      onTapDown: (_) {
+        setState(() {
+          _isPressed = true; // Set pressed state on tap down
+        });
+      },
       onTapUp: (_) {
         setState(() {
-          _isPressed = false;
+          _isPressed = false; // Reset pressed state when tap is released
+        });
+      },
+      onTapCancel: () {
+        setState(() {
+          _isPressed = false; // Reset the state when the tap is canceled
         });
       },
       child: Container(
@@ -68,9 +81,18 @@ class _AppButtonState extends State<AppButton> {
             mainAxisSize: MainAxisSize.min,  // Wraps content based on label and icons
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildIcon(context, widget.prefixIconPath, widget.prefixIconColor),
-              widget.label,
-              _buildIcon(context, widget.suffixIconPath, widget.suffixIconColor),
+              // If it's an icon-only variant, show only the icon(s)
+              if (_isIconOnlyVariant())
+                _buildIcon(context, widget.prefixIconPath, widget.prefixIconColor),
+              if (!_isIconOnlyVariant()) ...[
+                // Show prefix icon if available
+                if (widget.prefixIconPath != null)
+                  _buildIcon(context, widget.prefixIconPath, widget.prefixIconColor),
+                widget.label,  // Show label in normal cases
+                // Show suffix icon if available
+                if (widget.suffixIconPath != null)
+                  _buildIcon(context, widget.suffixIconPath, widget.suffixIconColor),
+              ]
             ],
           ),
         ),
@@ -78,12 +100,18 @@ class _AppButtonState extends State<AppButton> {
     );
   }
 
+  bool _isIconOnlyVariant() {
+    return widget.variant == ButtonVariant.primaryIconOnly ||
+        widget.variant == ButtonVariant.secondaryIconOnly ||
+        widget.variant == ButtonVariant.tertiaryIconOnly;
+  }
+
   Color _getBackgroundColor(BuildContext context) {
     if (widget.isDisabled) {
       return widget.variant == ButtonVariant.primary
           ? Theme.of(context).appColors.neutral100
           : widget.variant == ButtonVariant.secondary
-              ? Theme.of(context).appColors.neutral200
+              ? Colors.transparent // Secondary button has no background color
               : Theme.of(context).appColors.neutral300;
     }
 
@@ -92,7 +120,7 @@ class _AppButtonState extends State<AppButton> {
       return widget.variant == ButtonVariant.primary
           ? Theme.of(context).appColors.primary400 // Darker primary color
           : widget.variant == ButtonVariant.secondary
-              ? Theme.of(context).appColors.secondary400 // Darker secondary color
+              ? Colors.transparent // Secondary remains transparent when pressed
               : Theme.of(context).appColors.neutral400; // Darker tertiary color
     }
 
@@ -100,20 +128,46 @@ class _AppButtonState extends State<AppButton> {
       case ButtonVariant.primary:
         return Theme.of(context).appColors.primary500;
       case ButtonVariant.secondary:
-        return Theme.of(context).appColors.secondary500;
+        return Colors.transparent; // No background for secondary button
       case ButtonVariant.tertiary:
-        return Colors.transparent; // No background color for tertiary
+        return Colors.transparent; // No background for tertiary button
+      case ButtonVariant.primaryIconOnly:
+        return Theme.of(context).appColors.primary500;
+      case ButtonVariant.secondaryIconOnly:
+        return Colors.transparent; // No background for secondary icon-only
+      case ButtonVariant.tertiaryIconOnly:
+        return Colors.transparent; // No background for tertiary icon-only
     }
   }
 
   Border? _getBorder(BuildContext context) {
-    if (widget.variant == ButtonVariant.tertiary) {
+    if (widget.variant == ButtonVariant.secondary ||
+        widget.variant == ButtonVariant.secondaryIconOnly) {
       return Border.all(
-        color: Theme.of(context).appColors.neutral500,
+        color: Theme.of(context).appColors.primary500, // Primary color for secondary button border
         width: 2,
       );
     }
-    return null; // No border for primary or secondary
+    return null; // No border for primary, tertiary, or icon-only buttons
+  }
+
+  TextStyle _getTextStyle(BuildContext context) {
+    if (widget.variant == ButtonVariant.secondary) {
+      return TextStyle(
+        color: Theme.of(context).appColors.primary500, // Primary color for text and icons in secondary button
+        fontWeight: FontWeight.w600,
+      );
+    } else if (widget.variant == ButtonVariant.tertiary) {
+      return TextStyle(
+        color: Theme.of(context).appColors.neutral500, // Neutral color for text and icons in tertiary button
+        fontWeight: FontWeight.w600,
+      );
+    }
+
+    return TextStyle(
+      color: Theme.of(context).appColors.shadesWhite00, // Default text color for primary button
+      fontWeight: FontWeight.w600,
+    );
   }
 
   Widget _buildIcon(
@@ -132,7 +186,7 @@ class _AppButtonState extends State<AppButton> {
           height: 20,
           width: 20,
           colorFilter: ColorFilter.mode(
-            iconColor ?? Theme.of(context).appColors.shadesWhite00,
+            iconColor ?? _getTextStyle(context).color!, // Use appropriate color based on button variant
             BlendMode.srcIn,
           ),
         ),
